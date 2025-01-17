@@ -10,7 +10,7 @@ import SwiftUI
 struct RepositoryListView: View {
     @StateObject private var viewModel = RepositoriesViewModel()
     @State private var username: String = ""
-    
+
     var body: some View {
         NavigationView {
             VStack {
@@ -18,11 +18,13 @@ struct RepositoryListView: View {
                     TextField("Enter GitHub username", text: $username)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .padding()
-                    
+
                     Button("Load Repos") {
                         guard !username.isEmpty else { return }
                         viewModel.resetRepositories()
-                        viewModel.loadRepositories(for: username) {}
+                        viewModel.fetchTotalRepos(for: username) {
+                            viewModel.loadRepositories(for: username) {}
+                        }
                     }
                     .padding(.trailing)
                 }
@@ -34,14 +36,24 @@ struct RepositoryListView: View {
                         NavigationLink(destination: RepositoryDetailView(repository: repository)) {
                             RepositoryRow(repository: repository)
                         }
-                        .onAppear {
-                            if viewModel.shouldLoadMore(repository: repository) {
-                                viewModel.loadMoreRepositories(for: username)
-                            }
-                        }
                     }
                     .listStyle(InsetGroupedListStyle())
                 }
+
+                HStack {
+                    Button("Previous") {
+                        viewModel.goToPage(viewModel.currentPage - 1, for: username)
+                    }
+                    .disabled(viewModel.currentPage == 1)
+                    
+                    Text("Page \(viewModel.currentPage) of \(viewModel.totalPageCount)")
+                    
+                    Button("Next") {
+                        viewModel.goToPage(viewModel.currentPage + 1, for: username)
+                    }
+                    .disabled(viewModel.currentPage == viewModel.totalPageCount)
+                }
+                .padding()
             }
             .navigationTitle("Repositories")
             .toolbar {
@@ -65,5 +77,3 @@ struct RepositoryListView: View {
         }
     }
 }
-
-

@@ -16,33 +16,53 @@ class RepositoriesViewModel: ObservableObject {
     @Published var errorMessage: String = ""
     @Published var filterLanguage: String = "All"
     @Published var currentPage: Int = 1
-    @Published private(set) var totalPages: Int = 1
-    
+    @Published private(set) var totalPageCount: Int = 1
+    @Published private(set) var totalRepos: Int = 0
+
     private let pageSize = 10
     private var cancellables = Set<AnyCancellable>()
-    
+
     var languages: [String] {
         let allLanguages = allRepositories.compactMap { $0.language }
         let uniqueLanguages = Array(Set(allLanguages)).sorted()
         return ["All"] + uniqueLanguages
     }
+
+    func fetchTotalRepos(for user: String, completion: @escaping () -> Void) {
+        GitHubAPIService().fetchUserDetails(for: user) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let totalRepos):
+                    self?.totalRepos = totalRepos
+                    self?.totalPageCount = (totalRepos + self!.pageSize - 1) / self!.pageSize
+                case .failure(let error):
+                    self?.handleError(error)
+                }
+                completion()
+            }
+        }
+    }
     
-    func loadRepositories(for user: String, completion: @escaping () -> Void) {
+    func loadRepositories(for user: String, page: Int? = nil, completion: @escaping () -> Void) {
         guard !isLoading else { return }
         isLoading = true
-        
-        GitHubAPIService().fetchRepositories(for: user, page: currentPage) { [weak self] result in
+
+        let pageToLoad = page ?? currentPage
+        GitHubAPIService().fetchRepositories(for: user, page: pageToLoad) { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
                 switch result {
                 case .success(let repos):
-                    if repos.isEmpty && self?.allRepositories.isEmpty == true {
+                    if repos.isEmpty && pageToLoad == 1 {
                         self?.showError = true
                         self?.errorMessage = "No repositories found for this user."
                     } else {
-                        self?.allRepositories.append(contentsOf: repos)
-                        self?.filterAndUpdateRepositories()
-                        self?.currentPage += 1
+                        if pageToLoad == 1 {
+                            self?.repositories = repos
+                        } else {
+                            self?.repositories.append(contentsOf: repos)
+                        }
+                        self?.currentPage = pageToLoad
                     }
                 case .failure(let error):
                     self?.handleError(error)
@@ -52,25 +72,15 @@ class RepositoriesViewModel: ObservableObject {
         }
     }
     
-    private func handleError(_ error: APIError) {
+    func goToPage(_ page: Int, for user: String) {
+        guard page >= 0, page <= totalPageCount else { return }
+        currentPage = page
+        loadRepositories(for: user) {}
+    }
+
+    func handleError(_ error: APIError) {
         errorMessage = error.description
         showError = true
-    }
-    
-    
-    func shouldLoadMore(repository: Repository) -> Bool {
-        return repository == repositories.last
-    }
-    
-    func loadMoreRepositories(for user: String) {
-        loadRepositories(for: user) { [weak self] in
-            DispatchQueue.main.async {
-                if self?.repositories.isEmpty ?? true {
-                    self?.errorMessage = "No more repositories to load."
-                    self?.showError = true
-                }
-            }
-        }
     }
     
     func resetRepositories() {
