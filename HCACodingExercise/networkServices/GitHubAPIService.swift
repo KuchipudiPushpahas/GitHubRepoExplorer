@@ -9,7 +9,7 @@ import Foundation
 
 class GitHubAPIService {
     
-    private let token = "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"
+    private let token = "YOUR_PERSONAL_ACCESS_TOKEN"
     
     func fetchRepositories(for user: String, page: Int = 1, completion: @escaping (Result<[Repository], APIError>) -> Void) {
         let urlString = "https://api.github.com/users/\(user)/repos?per_page=30&page=\(page)"
