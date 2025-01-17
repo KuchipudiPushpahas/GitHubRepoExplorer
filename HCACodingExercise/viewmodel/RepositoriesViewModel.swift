@@ -18,16 +18,16 @@ class RepositoriesViewModel: ObservableObject {
     @Published var currentPage: Int = 1
     @Published private(set) var totalPageCount: Int = 1
     @Published private(set) var totalRepos: Int = 0
-
-    private let pageSize = 10
+    
+    private let pageSize = 30
     private var cancellables = Set<AnyCancellable>()
-
+    
     var languages: [String] {
         let allLanguages = allRepositories.compactMap { $0.language }
         let uniqueLanguages = Array(Set(allLanguages)).sorted()
         return ["All"] + uniqueLanguages
     }
-
+    
     func fetchTotalRepos(for user: String, completion: @escaping () -> Void) {
         GitHubAPIService().fetchUserDetails(for: user) { [weak self] result in
             DispatchQueue.main.async {
@@ -46,7 +46,7 @@ class RepositoriesViewModel: ObservableObject {
     func loadRepositories(for user: String, page: Int? = nil, completion: @escaping () -> Void) {
         guard !isLoading else { return }
         isLoading = true
-
+        
         let pageToLoad = page ?? currentPage
         GitHubAPIService().fetchRepositories(for: user, page: pageToLoad) { [weak self] result in
             DispatchQueue.main.async {
@@ -57,11 +57,8 @@ class RepositoriesViewModel: ObservableObject {
                         self?.showError = true
                         self?.errorMessage = "No repositories found for this user."
                     } else {
-                        if pageToLoad == 1 {
-                            self?.repositories = repos
-                        } else {
-                            self?.repositories.append(contentsOf: repos)
-                        }
+                        self?.repositories = repos
+                        self?.allRepositories.append(contentsOf: repos)
                         self?.currentPage = pageToLoad
                     }
                 case .failure(let error):
@@ -73,11 +70,16 @@ class RepositoriesViewModel: ObservableObject {
     }
     
     func goToPage(_ page: Int, for user: String) {
-        guard page >= 0, page <= totalPageCount else { return }
-        currentPage = page
-        loadRepositories(for: user) {}
+        guard page >= 1, page <= totalPageCount, page != currentPage else {
+            //print("Invalid page \(page). Current page: \(currentPage)")
+            return
+        }
+        //print("Navigation to page \(page)")
+        loadRepositories(for: user, page: page) {
+            //print("loaded page \(page)")
+        }
     }
-
+    
     func handleError(_ error: APIError) {
         errorMessage = error.description
         showError = true

@@ -12,7 +12,7 @@ class GitHubAPIService {
     private let token = "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"
     
     func fetchRepositories(for user: String, page: Int = 1, completion: @escaping (Result<[Repository], APIError>) -> Void) {
-        let urlString = "https://api.github.com/users/\(user)/repos?per_page=10&page=\(page)"
+        let urlString = "https://api.github.com/users/\(user)/repos?per_page=30&page=\(page)"
         guard let url = URL(string: urlString) else {
             return completion(.failure(.invalidURL))
         }
