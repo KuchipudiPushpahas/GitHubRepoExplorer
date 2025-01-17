@@ -8,10 +8,18 @@
 import Foundation
 
 class GitHubAPIService {
+    
+    private let token = "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"
+    
     func fetchRepositories(for user: String, page: Int = 1, completion: @escaping (Result<[Repository], APIError>) -> Void) {
         let urlString = "https://api.github.com/users/\(user)/repos?per_page=10&page=\(page)"
         guard let url = URL(string: urlString) else {
             return completion(.failure(.invalidURL))
+        }
+        
+        var request = URLRequest(url: url)
+        if !token.isEmpty {
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
@@ -34,10 +42,8 @@ class GitHubAPIService {
             
             do {
                 let repositories = try JSONDecoder().decode([Repository].self, from: data)
-                //print("Repositories: \(repositories)")
                 completion(.success(repositories))
             } catch {
-                //print("Decoding Error: \(error.localizedDescription)")
                 completion(.failure(.decodingError))
             }
         }
