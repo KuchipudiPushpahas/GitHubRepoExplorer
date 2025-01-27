@@ -1,4 +1,4 @@
-# HCACodingExercise
+# GitHubRepoExplorer
 
 ## **Overview**
 This iOS app fetches and displays repositories for a given GitHub username using the GitHub API. The app is built using Swift and SwiftUI, following the MVVM (Model-View-ViewModel) architecture.
